@@ -2,11 +2,15 @@
 
 **Build. Run. Replay. Improve AI.**
 
-Rewyn is a universal, open, modular AI engineering SDK. It provides the
-primitives for building modern agents (models, tools, context, memory, RAG,
-MCP, skills, loops, graphs, subagents, handoffs, state, checkpoints,
-guardrails, human-in-the-loop) and the infrastructure for understanding,
-replaying, evaluating and continuously improving their behaviour.
+Agents fail in ways tests do not catch. They worked yesterday, they answer
+differently today, and the run that proves it is gone.
+
+Rewyn records every run so you can go back to it. Every primitive emits a
+structured event, so any run can be replayed exactly, diffed against another,
+scored, and turned into a regression test — long after it happened.
+
+It is provider-agnostic, framework-independent, and local-first: no account,
+no API key, no network.
 
 ```python
 from rewyn import Agent
@@ -89,20 +93,19 @@ serves the same screens over a team's runs. See [docs/ui.md](docs/ui.md).
 
 ## Cloud (optional)
 
-Rewyn stays fully usable with no account. When a team wants shared runs,
-datasets and evaluations, `rewyn-cloud` is a FastAPI service in this
-repository that the SDK syncs to:
+Rewyn is complete without it, and always will be. When a team wants shared
+runs, centralised datasets and evaluation history that outlives one laptop,
+the SDK syncs to a hosted service:
 
 ```bash
-uv run rewyn-cloud create-project acme   # prints an API key once
-uv run rewyn-cloud serve
-
-uv run rewyn login --endpoint http://127.0.0.1:8000 --key rw_...
-uv run rewyn sync
+rewyn login --endpoint https://api.rewyn.dev --key rw_...
+rewyn sync
 ```
 
-Uploads retry, buffer locally when the service is unreachable, and never
-raise into your application. See [cloud/README.md](cloud/README.md).
+The client half of that protocol is here and open source, so what a
+deployment speaks stays inspectable. Uploads retry, buffer locally when the
+service is unreachable, and never raise into your application. See
+[docs/cloud.md](docs/cloud.md) and <https://rewyn.dev>.
 
 ## Development
 

@@ -1,0 +1,72 @@
+site_name: Rewyn
+site_description: Build. Run. Replay. Improve AI.
+site_url: https://rewyn.dev
+repo_url: https://github.com/rewyn-dev/rewyn
+repo_name: rewyn-dev/rewyn
+edit_uri: edit/main/docs/
+copyright: Apache-2.0
+
+docs_dir: docs
+
+theme:
+  name: material
+  features:
+    - navigation.sections
+    - navigation.top
+    - navigation.instant
+    - content.code.copy
+    - content.action.edit
+    - search.suggest
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: deep orange
+      accent: deep orange
+      toggle: { icon: material/weather-night, name: Switch to dark mode }
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: deep orange
+      accent: deep orange
+      toggle: { icon: material/weather-sunny, name: Switch to light mode }
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - toc: { permalink: true }
+  - pymdownx.highlight: { anchor_linenums: true }
+  - pymdownx.superfences
+  - pymdownx.inlinehilite
+  - pymdownx.tabbed: { alternate_style: true }
+
+nav:
+  - Home: README.md
+  - Getting started: getting-started.md
+  - Building:
+      - Models: models.md
+      - Agents: agents.md
+      - Tools: tools.md
+      - Context engineering: context-engineering.md
+      - Memory: memory.md
+      - RAG: rag.md
+      - MCP: mcp.md
+      - Skills: skills.md
+  - Orchestration:
+      - Loops: loops.md
+      - Graphs: graphs.md
+      - Subagents: subagents.md
+      - Handoffs: handoffs.md
+      - State and checkpoints: state.md
+  - Safety:
+      - Guardrails: guardrails.md
+      - Human in the loop: human-in-the-loop.md
+      - Sandbox: sandbox.md
+      - Security: security.md
+  - Understanding runs:
+      - Replay: replay.md
+      - Evaluation: evaluation.md
+      - Regression: regression.md
+      - Console: ui.md
+  - Operating:
+      - Production: production.md
+      - Integrations: integrations.md
+      - Cloud: cloud.md

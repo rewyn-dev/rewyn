@@ -1,0 +1,49 @@
+name: Bug report
+description: Something does not behave the way it should
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report this.
+
+        If this is a **security** issue, please do not file it here — use
+        [private reporting](https://github.com/rewyn-dev/rewyn/security/advisories/new)
+        instead.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What did you expect, and what did you get instead?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduction
+      description: >
+        The smallest code that shows the problem. `rewyn.testing.FakeModel`
+        lets most reproductions run without a provider key — if yours needs
+        one, say so rather than leaving it out.
+      render: python
+    validations:
+      required: true
+  - type: textarea
+    id: doctor
+    attributes:
+      label: Output of `rewyn doctor`
+      description: This reports the version, the extras you have and where state lives.
+      render: shell
+    validations:
+      required: true
+  - type: input
+    id: run-id
+    attributes:
+      label: Run id (optional)
+      description: >
+        If a recorded run shows the problem, `rewyn export <run-id>` produces a
+        bundle you can attach. Check it for anything private before you do.
+  - type: textarea
+    id: anything-else
+    attributes:
+      label: Anything else

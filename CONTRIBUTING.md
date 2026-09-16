@@ -3,7 +3,7 @@
 ## Setup
 
 ```bash
-uv sync --all-extras --all-packages
+uv sync --all-extras
 make check
 ```
 
@@ -26,4 +26,31 @@ make check
 - One logical change per PR, with a conventional-commit style title
   (`feat(context): add budget decisions`).
 - Update `CHANGELOG.md` under `Unreleased`.
-- Add or update the relevant page under `docs/`.
+- Add or update the relevant page under `docs/`. Their Python snippets are
+  parsed and checked against the package by `tests/examples/test_docs.py`, so
+  a renamed parameter breaks the test rather than silently breaking the docs.
+
+## Sign your work
+
+Rewyn uses the [Developer Certificate of Origin](https://developercertificate.org/).
+It is a short statement that you wrote the patch, or otherwise have the right
+to submit it under this project's licence. You agree to it by adding a
+`Signed-off-by` line to each commit:
+
+```bash
+git commit -s -m "feat(context): add budget decisions"
+```
+
+which appends:
+
+```
+Signed-off-by: Your Name <your.email@example.com>
+```
+
+Use your real name. We ask for the DCO rather than a contributor licence
+agreement deliberately: there is nothing to sign, nothing to send, and you
+keep the copyright in your contribution.
+
+## Reporting a security issue
+
+Do not open a public issue. See [SECURITY.md](SECURITY.md).
