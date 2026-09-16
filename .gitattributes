@@ -1,0 +1,3 @@
+# Generated recordings: keep them in the repository but out of diffs.
+demo/rewyn-demo.gif binary linguist-generated=true
+demo/rewyn-demo.cast linguist-generated=true

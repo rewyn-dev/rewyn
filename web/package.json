@@ -1,0 +1,39 @@
+{
+  "name": "rewyn-console",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The Rewyn console: an AI engineering control room.",
+  "scripts": {
+    "dev": "next dev -p 4401",
+    "build": "next build",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "e2e": "playwright test"
+  },
+  "dependencies": {
+    "next": "^15.5.25",
+    "react": "19.1.1",
+    "react-dom": "19.1.1"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
+    "@eslint/eslintrc": "^3.3.7",
+    "@playwright/test": "^1.63.0",
+    "@testing-library/dom": "^10.4.0",
+    "@testing-library/react": "^16.3.0",
+    "@types/node": "^22.10.0",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "axe-core": "^4.13.0",
+    "eslint": "^9.17.0",
+    "eslint-config-next": "^15.5.25",
+    "jsdom": "^25.0.1",
+    "prettier": "^3.9.6",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}

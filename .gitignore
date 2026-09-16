@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Rewyn local state
+.rewyn/
+
+# Environment
+.env
+.env.*
+
+# OS / editors
+.DS_Store
+.idea/
+.vscode/
