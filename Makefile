@@ -22,8 +22,12 @@ check: lint typecheck test
 ui:
 	uv run rewyn ui
 
+# npm ci, not npm install: the bundle under src/rewyn/ui/static is committed
+# and CI diffs it against a fresh build. npm install is free to move versions
+# inside their ranges, which changes chunk content hashes and fails that check
+# even though nothing in the console changed. ci installs the lockfile exactly.
 web-install:
-	cd web && npm install
+	cd web && npm ci
 
 # Build the console once; the wheel ships the result under rewyn/ui/static.
 build-web: web-install

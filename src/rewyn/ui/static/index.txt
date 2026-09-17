@@ -2,7 +2,7 @@
 2:I[9766,[],""]
 3:I[8924,[],""]
 4:I[1959,[],"ClientPageRoot"]
-5:I[2221,["974","static/chunks/app/page-e5060624bbf00de9.js"],"default"]
+5:I[2221,["974","static/chunks/app/page-500321072c487e72.js"],"default"]
 8:I[4431,[],"OutletBoundary"]
 a:I[5278,[],"AsyncMetadataOutlet"]
 c:I[4431,[],"ViewportBoundary"]
