@@ -36,22 +36,27 @@ export function useApi<T>(path: string | null, params?: Params): AsyncState<T> {
   const [nonce, setNonce] = useState(0);
   const latest = useRef(0);
 
+  // What a new key shows before any request is pure derivation: the cached
+  // document if there is one, nothing if there is not. Doing it here rather
+  // than in the effect means a cache hit paints once, with the right data,
+  // instead of painting the previous screen's document first.
+  // Keyed on the nonce too, so reload() -- which drops the cache entry and
+  // bumps it -- goes back to loading through the same path.
+  const ticketed = `${key ?? ""}:${nonce}`;
+  const [requested, setRequested] = useState(ticketed);
+  if (ticketed !== requested) {
+    setRequested(ticketed);
+    const cached = key === null ? undefined : (cache.get(key) as T | undefined);
+    setData(cached ?? null);
+    setProblem(null);
+    setLoading(key !== null && cached === undefined);
+  }
+
   useEffect(() => {
-    if (key === null || path === null) {
-      setData(null);
-      setLoading(false);
-      return;
-    }
-    const cached = cache.get(key) as T | undefined;
-    if (cached !== undefined && nonce === 0) {
-      setData(cached);
-      setProblem(null);
-      setLoading(false);
-      return;
-    }
+    if (key === null || path === null) return;
+    if (cache.has(key) && nonce === 0) return;
     const controller = new AbortController();
     const ticket = (latest.current += 1);
-    setLoading(true);
     get<T>(path, params, controller.signal)
       .then((result) => {
         if (ticket !== latest.current) return;

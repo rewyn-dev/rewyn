@@ -210,3 +210,26 @@ test.describe("deep links", () => {
     await expect(page.locator('.nav-item[aria-current="page"]')).toContainText("Datasets");
   });
 });
+
+test.describe("the theme", () => {
+  test("toggles, survives navigation, and is remembered", async ({ page }) => {
+    // The theme lives on the document element rather than in React state, so
+    // this is the guard for the store reading it from the wrong place: a
+    // toggle that only updated React would leave the button and the page
+    // disagreeing after a navigation.
+    await page.goto("/runs");
+    await page.waitForSelector("main");
+    const before = await page.locator("html").getAttribute("data-theme");
+    const other = before === "light" ? "dark" : "light";
+
+    await page.getByRole("button", { name: `Switch to ${other} theme` }).click();
+    await expect(page.locator("html")).toHaveAttribute("data-theme", other);
+    // The button now offers the way back, which is what says React re-rendered
+    // rather than the DOM having been changed behind its back.
+    await expect(page.getByRole("button", { name: `Switch to ${before} theme` })).toBeVisible();
+
+    await page.goto("/datasets");
+    await page.waitForSelector("main");
+    await expect(page.locator("html")).toHaveAttribute("data-theme", other);
+  });
+});
