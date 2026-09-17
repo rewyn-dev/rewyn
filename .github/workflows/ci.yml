@@ -23,12 +23,12 @@ jobs:
         run: uv sync --all-extras --python ${{ matrix.python-version }}
       - name: Lint
         run: |
-          uv run ruff check .
-          uv run ruff format --check .
+          uv run --all-extras ruff check .
+          uv run --all-extras ruff format --check .
       - name: Typecheck
-        run: uv run mypy
+        run: uv run --all-extras mypy
       - name: Test
-        run: uv run pytest --cov --cov-report=xml
+        run: uv run --all-extras pytest --cov --cov-report=xml
       - name: Examples and demo
         # Every runnable artifact in the repository must actually run. The
         # test suite covers them too; this catches a packaging or entry point
@@ -37,10 +37,10 @@ jobs:
           DEMO_SPEED: "0"
           REWYN_HOME: ${{ runner.temp }}/.rewyn
         run: |
-          uv run python examples/quickstart.py
-          uv run python -m examples.replay_and_regression
-          uv run python -m examples.enterprise_research_agent
-          uv run python -m demo
+          uv run --all-extras python examples/quickstart.py
+          uv run --all-extras python -m examples.replay_and_regression
+          uv run --all-extras python -m examples.enterprise_research_agent
+          uv run --all-extras python -m demo
 
   console:
     # The console is built once and shipped in the wheel, so the build, its

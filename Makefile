@@ -3,24 +3,28 @@
 install:
 	uv sync --all-extras
 
+# --all-extras on every invocation, not just `install`: uv run syncs the
+# environment to what the command declares, so a plain `uv run mypy` can leave
+# an environment without the optional extras. mypy then cannot see fastapi or
+# httpx and reports 78 import and untyped-decorator errors that are not real.
 lint:
-	uv run ruff check .
-	uv run ruff format --check .
+	uv run --all-extras ruff check .
+	uv run --all-extras ruff format --check .
 
 format:
-	uv run ruff check --fix .
-	uv run ruff format .
+	uv run --all-extras ruff check --fix .
+	uv run --all-extras ruff format .
 
 typecheck:
-	uv run mypy
+	uv run --all-extras mypy
 
 test:
-	uv run pytest --cov --cov-report=term-missing
+	uv run --all-extras pytest --cov --cov-report=term-missing
 
 check: lint typecheck test
 
 ui:
-	uv run rewyn ui
+	uv run --all-extras rewyn ui
 
 # npm ci, not npm install: the bundle under src/rewyn/ui/static is committed
 # and CI diffs it against a fresh build. npm install is free to move versions
@@ -43,14 +47,14 @@ e2e: build-web
 	cd web && npx playwright install --with-deps chromium && npm run e2e
 
 demo:
-	uv run python -m demo
+	uv run --all-extras python -m demo
 
 # Re-record after any change that alters the demo's output. The demo test
 # tells you when that has happened. Needs: brew install asciinema agg
 record:
 	REWYN_HOME=$$(mktemp -d)/.rewyn DEMO_SPEED=1 DEMO_COLOUR=1 PYTHONUNBUFFERED=1 \
 	  asciinema rec demo/rewyn-demo.cast --window-size 100x32 --overwrite \
-	  -c "uv run python -m demo"
+	  -c "uv run --all-extras python -m demo"
 	agg --theme asciinema --font-size 15 --speed 1.8 --idle-time-limit 0.9 \
 	  --fps-cap 10 demo/rewyn-demo.cast demo/rewyn-demo.gif 2>/dev/null
 	@ls -lh demo/rewyn-demo.gif | awk '{print "gif:", $$5}'

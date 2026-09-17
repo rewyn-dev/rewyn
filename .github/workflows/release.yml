@@ -23,14 +23,14 @@ jobs:
         run: uv sync --all-extras
       - name: Check
         run: |
-          uv run ruff check .
-          uv run ruff format --check .
-          uv run mypy
-          uv run pytest -q
+          uv run --all-extras ruff check .
+          uv run --all-extras ruff format --check .
+          uv run --all-extras mypy
+          uv run --all-extras pytest -q
       - name: Tag must match the packaged version
         run: |
           tag="${GITHUB_REF_NAME#v}"
-          pkg="$(uv run python -c 'import rewyn; print(rewyn.__version__)')"
+          pkg="$(uv run --all-extras python -c 'import rewyn; print(rewyn.__version__)')"
           echo "tag=$tag package=$pkg"
           test "$tag" = "$pkg"
       - name: Changelog must describe this version
