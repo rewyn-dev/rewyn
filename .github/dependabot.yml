@@ -1,13 +1,35 @@
 version: 2
 updates:
+  # Grouped on purpose. Ungrouped, the first run opened ten pull requests at
+  # once, which is noise rather than signal: nobody reviews ten dependency
+  # bumps carefully. Minor and patch updates arrive as one PR per ecosystem;
+  # majors stay separate, because those are the ones worth reading.
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule: { interval: "weekly" }
+    groups:
+      actions:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+
   - package-ecosystem: "uv"
     directory: "/"
     schedule: { interval: "weekly" }
     open-pull-requests-limit: 5
+    groups:
+      python:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+
+  # A web bump changes the built bundle, and the bundle is committed so that
+  # `pip install rewyn[ui]` needs no Node. Every one of these needs
+  # `make build-web` and the result committed, or CI fails on the bundle
+  # check -- so fewer, larger PRs are cheaper here than many small ones.
   - package-ecosystem: "npm"
     directory: "/web"
     schedule: { interval: "weekly" }
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 3
+    groups:
+      console:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
