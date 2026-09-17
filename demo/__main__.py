@@ -1,6 +1,6 @@
 """The Rewyn demo: what it is, why it matters, how to use it.
 
-    uv run python -m demo
+    uv run --all-extras python -m demo
 
 Runs offline against a scripted model, so it is identical every time and
 safe to record. Every number it prints is produced by the SDK; nothing is

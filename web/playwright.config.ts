@@ -17,7 +17,7 @@ export default defineConfig({
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   webServer: {
-    command: "uv run --directory .. python scripts/console_fixture.py",
+    command: "uv run --all-extras --directory .. python scripts/console_fixture.py",
     url: `http://127.0.0.1:${process.env.CONSOLE_PORT ?? 4456}/console/v1/health`,
     // Never reuse a server: the fixture seeds a throwaway REWYN_HOME, and
     // tests write to it (replays, datasets). A fresh one per run is what makes

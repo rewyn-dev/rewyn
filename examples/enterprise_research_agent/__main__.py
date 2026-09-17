@@ -1,6 +1,6 @@
 """Run the golden demo: build, run, replay, diff, evaluate, gate (spec §52).
 
-    uv run python -m examples.enterprise_research_agent
+    uv run --all-extras python -m examples.enterprise_research_agent
 
 Offline and deterministic. Every number printed below is produced by the
 SDK, not hard-coded.
