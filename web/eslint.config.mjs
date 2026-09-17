@@ -1,11 +1,12 @@
-import { dirname } from "node:path";
-import { fileURLToPath } from "node:url";
-import { FlatCompat } from "@eslint/eslintrc";
+import coreWebVitals from "eslint-config-next/core-web-vitals";
+import typescript from "eslint-config-next/typescript";
 
-const compat = new FlatCompat({ baseDirectory: dirname(fileURLToPath(import.meta.url)) });
-
+// eslint-config-next 16 ships flat config directly. The v15 setup loaded it
+// through FlatCompat, which in 16 throws "Converting circular structure to
+// JSON" because the config it returns is already flat and self-referential.
 const config = [
-  ...compat.extends("next/core-web-vitals", "next/typescript"),
+  ...coreWebVitals,
+  ...typescript,
   { ignores: ["out/**", ".next/**", "node_modules/**", "next-env.d.ts"] },
 ];
 

@@ -48,13 +48,13 @@ export function SearchDialog({
     input.current?.focus();
   }, []);
 
+  const query = text.trim();
+  // Too short to search is not a result worth storing: deriving it keeps the
+  // effect responsible only for what the network returns.
+  const visible = mode === "search" && query.length >= 2 ? results : null;
+
   useEffect(() => {
-    if (mode !== "search") return;
-    const query = text.trim();
-    if (query.length < 2) {
-      setResults(null);
-      return;
-    }
+    if (mode !== "search" || query.length < 2) return;
     const controller = new AbortController();
     const timer = setTimeout(() => {
       get<SearchResults>("/search", { q: query }, controller.signal)
@@ -65,7 +65,7 @@ export function SearchDialog({
       clearTimeout(timer);
       controller.abort();
     };
-  }, [text, mode]);
+  }, [query, mode]);
 
   const items = useMemo<Item[]>(() => {
     if (mode === "command") {
@@ -97,8 +97,8 @@ export function SearchDialog({
         ? all.filter((item) => `${item.label} ${item.detail}`.toLowerCase().includes(needle))
         : all;
     }
-    if (!results) return [];
-    return results.hits.map((hit) => ({
+    if (!visible) return [];
+    return visible.hits.map((hit) => ({
       id: `${hit.group}:${hit.id}`,
       group: hit.group,
       label: hit.label,
@@ -108,9 +108,13 @@ export function SearchDialog({
         onClose();
       },
     }));
-  }, [mode, results, text, commands, navigate, onClose]);
+  }, [mode, visible, text, commands, navigate, onClose]);
 
-  useEffect(() => setActive(0), [text, mode]);
+  const [listed, setListed] = useState(`${mode}:${text}`);
+  if (listed !== `${mode}:${text}`) {
+    setListed(`${mode}:${text}`);
+    setActive(0);
+  }
 
   const grouped = useMemo(() => {
     const map = new Map<string, Item[]>();

@@ -8,7 +8,7 @@
  * linked to directly so a finding can be shared.
  */
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { get } from "@/api/client";
 import type { TimelineView } from "@/api/types";
@@ -25,13 +25,18 @@ export function Timeline({ runId }: { runId: string }) {
   const [open, setOpen] = useState<number | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
 
-  useEffect(() => {
-    if (!data) return;
+  // Adjusting state while rendering, rather than in an effect: a new document
+  // replaces the accumulated pages instead of appending to them. React
+  // re-renders immediately without painting the stale list, which an effect
+  // would have shown for a frame.
+  const [applied, setApplied] = useState<typeof data>(null);
+  if (data && data !== applied) {
+    setApplied(data);
     setEntries(data.entries);
     setNext(data.next_seq);
     const hash = Number(window.location.hash.replace("#event-", ""));
     setOpen(Number.isFinite(hash) && hash > 0 ? hash : null);
-  }, [data]);
+  }
 
   if (problem) return <Problem problem={problem} onRetry={reload} />;
   if (loading && entries.length === 0) return <Skeleton rows={10} />;

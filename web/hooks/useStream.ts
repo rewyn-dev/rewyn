@@ -31,9 +31,17 @@ export function useStream<T>(path: string | null): StreamState<T> {
   });
   const source = useRef<EventSource | null>(null);
 
+  // Clearing the previous stream's frames belongs in render, not in the effect
+  // that opens the new one: done there, the first paint after a path change
+  // still showed the old run's last frame.
+  const [streaming, setStreaming] = useState(path);
+  if (path !== streaming) {
+    setStreaming(path);
+    setState({ frame: null, frames: 0, connected: false, finished: false, error: null });
+  }
+
   useEffect(() => {
     if (path === null) return;
-    setState({ frame: null, frames: 0, connected: false, finished: false, error: null });
     const stream = new EventSource(`${BASE}${path}`);
     source.current = stream;
 
