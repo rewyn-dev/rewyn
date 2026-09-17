@@ -42,6 +42,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v3
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      # The console ships in the wheel but is not committed, so the artifact
+      # that goes to PyPI is built here, on Linux, from the lockfile.
+      - name: Build the console
+        run: make build-web
       - name: Build
         run: uv build
       # A wheel that imports only in the repository is the classic packaging

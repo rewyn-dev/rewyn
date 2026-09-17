@@ -64,6 +64,13 @@ dev = [
 requires = ["hatchling>=1.25"]
 build-backend = "hatchling.build"
 
+# src/rewyn/ui/static is gitignored, and hatchling honours .gitignore when it
+# decides what to package. Without this the console would be silently missing
+# from every wheel and sdist, which is the exact failure the release workflow
+# checks for.
+[tool.hatch.build]
+artifacts = ["src/rewyn/ui/static/**"]
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/rewyn"]
 

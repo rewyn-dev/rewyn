@@ -90,8 +90,16 @@ package boundary, not a convention.
 `rewyn/ui/` holds the console API, its wire schemas and the read model that
 turns a recorded run into the console's panels; `rewyn_cloud.console`
 serves the same routes over the database. The frontend is `web/` (React,
-TypeScript, Next.js, UI spec §51), built once into `src/rewyn/ui/static/`
-and committed so `pip install rewyn[ui]` needs no Node.
+TypeScript, Next.js, UI spec §51), built into `src/rewyn/ui/static/` and
+shipped inside the wheel, so `pip install rewyn[ui]` needs no Node.
+
+That directory is a build artifact and is **not** committed: Next compiles
+through a per-platform SWC binary, so a macOS build and a Linux build differ
+in their chunk hashes while rendering identically, and no committed copy can
+satisfy both. The release workflow builds it on Linux before `uv build`, and
+`[tool.hatch.build] artifacts` makes hatchling package it despite
+`.gitignore`. Run `make build-web` after cloning if you want the console
+locally; without it the server serves an "unbuilt" page and one test skips.
 
 ## Build order
 

@@ -23,3 +23,8 @@ htmlcov/
 .DS_Store
 .idea/
 .vscode/
+
+# The console bundle is a build artifact. It cannot be reproduced byte-for-byte
+# across platforms (Next uses a per-platform SWC binary), so it is built on
+# Linux during release and shipped in the wheel rather than committed.
+src/rewyn/ui/static/

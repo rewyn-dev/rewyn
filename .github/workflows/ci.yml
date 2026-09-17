@@ -69,10 +69,10 @@ jobs:
           npm run test -- --run
       - name: Build the console
         run: make build-web
-      - name: The committed bundle matches the build
-        # src/rewyn/ui/static is committed so `pip install rewyn[ui]`
-        # needs no Node. A stale bundle would ship an old interface.
-        run: git diff --exit-code --stat -- src/rewyn/ui/static
+      # The bundle is not committed and is not diffed: Next builds through a
+      # per-platform SWC binary, so a macOS build and a Linux build differ in
+      # their chunk hashes while rendering identically. Building it here proves
+      # it builds; the release workflow builds the one that ships.
       - name: Browser tests
         run: |
           cd web
