@@ -3,7 +3,7 @@ name: Docs
 on:
   push:
     branches: [main]
-    paths: ["docs/**", "mkdocs.yml", ".github/workflows/docs.yml"]
+    paths: ["docs/**", "landing/**", "mkdocs.yml", ".github/workflows/docs.yml"]
   workflow_dispatch:
 
 permissions:
@@ -26,12 +26,17 @@ jobs:
       # Pinned: MkDocs 2.0 removes the plugin and theming systems with no
       # migration path, so an unpinned install would break the site silently.
       - run: pip install "mkdocs-material~=9.6" "mkdocs~=1.6"
-      # --strict fails on a broken internal link, so a renamed page cannot
-      # quietly leave dead links behind on the published site.
-      - run: mkdocs build --strict
+      # The landing page is the site root; the documentation sits under
+      # /docs/. --strict still fails on a broken internal link, so a renamed
+      # page cannot quietly leave dead links behind.
+      - run: mkdocs build --strict --site-dir _site/docs
+      - name: Place the landing page at the root
+        run: |
+          cp landing/index.html _site/index.html
+          cp landing/CNAME _site/CNAME
       - uses: actions/upload-pages-artifact@v5
         with:
-          path: site
+          path: _site
 
   deploy:
     needs: build

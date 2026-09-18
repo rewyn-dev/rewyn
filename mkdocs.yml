@@ -1,6 +1,6 @@
 site_name: Rewyn
 site_description: Build. Run. Replay. Improve AI.
-site_url: https://rewyn.dev
+site_url: https://rewyn.dev/docs/
 repo_url: https://github.com/rewyn-dev/rewyn
 repo_name: rewyn-dev/rewyn
 edit_uri: edit/main/docs/
