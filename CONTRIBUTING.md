@@ -7,6 +7,10 @@ uv sync --all-extras
 make check
 ```
 
+The console (`web/`) needs **Node 24**, which is what CI uses: vitest 5
+requires Node ^22.12 or ^24, and Node 20's npm 10 cannot resolve the
+dependency tree at all. `make check-web` and `make build-web` do the rest.
+
 ## Ground rules
 
 - **Everything is an event.** A primitive that does not emit execution events

@@ -26,6 +26,10 @@ check: lint typecheck test
 ui:
 	uv run --all-extras rewyn ui
 
+# Node 24 (as CI uses): vitest 5 requires ^22.12 || ^24, and Node 20's npm 10
+# cannot resolve the tree at all -- `npm install` throws "Cannot read properties
+# of null (reading 'edgesOut')". Node 24 ships npm 11, which can.
+#
 # npm ci, not npm install: the bundle under src/rewyn/ui/static is committed
 # and CI diffs it against a fresh build. npm install is free to move versions
 # inside their ranges, which changes chunk content hashes and fails that check

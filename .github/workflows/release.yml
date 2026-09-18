@@ -44,7 +44,7 @@ jobs:
       - uses: astral-sh/setup-uv@v7
       - uses: actions/setup-node@v7
         with:
-          node-version: "20"
+          node-version: "24"
           cache: npm
           cache-dependency-path: web/package-lock.json
       # The console ships in the wheel but is not committed, so the artifact
