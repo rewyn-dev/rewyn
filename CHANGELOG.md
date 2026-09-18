@@ -4,6 +4,70 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 semantic versioning.
 
+## [0.1.1] - 2026-09-18
+
+The first release shipped a console that fails WCAG AA in both palettes, and
+a release path that nothing had ever run. Those are the same mistake twice: a
+check that cannot execute is not a check, and both failures sat behind one.
+This release fixes what 0.1.0 put on PyPI and makes the path that put it
+there verifiable.
+
+### Fixed
+
+- `--text-faint` fell below the 4.5 that WCAG AA requires, in both themes.
+  In light it was `#646d7b` on `--accent-bg`, a ratio of 4.30, which axe
+  caught on `/regression` for a nav item that is both the current page and
+  locked; it darkens to `#5b6370` and clears 4.9 on every light surface it
+  sits on. In dark it was `#7e8896`, below AA on five tinted surfaces and as
+  low as 4.19 on `--running-bg`; it lightens to `#8b94a1`, which clears 4.9
+  everywhere. Both values are barely distinguishable from the ones they
+  replace.
+- The palette is now checked without a browser. axe only reports a colour
+  pair when some screen the suite happens to visit renders it, which is why
+  one theme's failure could sit in CI while the other's sat unseen, and why
+  each fix only uncovered the next. `web/tests/contrast.test.ts` checks the
+  tokens directly — every text colour against every surface it can sit on,
+  both themes, alpha composited — in two milliseconds, naming each failing
+  pair with its ratio. The browser suite also runs light in full and repeats
+  the accessibility checks in dark, so neither half of the palette can go
+  unexercised again.
+- The console bundle is built during release instead of being committed.
+  Next compiles through a per-platform SWC binary, so a macOS build and a
+  Linux build differ in their chunk hashes while rendering identically, and
+  the committed-bundle check was demanding something no two machines could
+  satisfy. `src/rewyn/ui/static` becomes what it always was, a build
+  artifact; the release workflow builds it on Linux before `uv build`, and
+  `[tool.hatch.build] artifacts` keeps it in the wheel and sdist despite
+  `.gitignore`. Users still need no Node. A checkout without the bundle
+  degrades rather than breaks: the server serves its unbuilt page, the suite
+  passes with one extra skip, and `make build-web` restores it.
+- The web lockfile could not be resolved by npm 10, which reported the
+  conflict as `Cannot read properties of null (reading 'edgesOut')` rather
+  than as a conflict. `@vitejs/plugin-react` was still on 4, which peers on
+  the old vite; it moves to 6 and the tree is regenerated coherently, vitest
+  5.0.1 on vite 8.3.0.
+- Every `uv run` declares the extras it needs, and the end-to-end fixture
+  server starts with its own, so neither depends on a developer having
+  installed everything.
+
+### Changed
+
+- Next 16, and the console no longer copies external state into React from
+  effects. The theme lives on the document element and the selected
+  environment in `localStorage`; both are now read with `useSyncExternalStore`
+  where the value actually is, so the first render is correct instead of
+  painting a placeholder and then the truth. A storage listener means another
+  tab changing either is picked up rather than silently diverging. `useApi`,
+  `useStream`, `Timeline` and `SearchDialog` adjust during render against the
+  previous key instead of clearing state at the top of an effect, which also
+  removes a class of flicker: a cache hit paints once, with the document.
+- Both workflows build the console on Node 24. Node 20 ships an npm that
+  cannot resolve the tree at all, and vitest 5 does not support it — that was
+  only a warning, so the tests had been running on a combination nobody
+  supports.
+- Dependabot groups its updates so a week arrives as one pull request, and
+  every action moves to its current major.
+
 ## [0.1.0] - 2026-09-16
 
 The first release under the name Rewyn, and the first intended for the public.
