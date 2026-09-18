@@ -1,0 +1,1000 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Rewyn is a flight recorder for AI agents: record every run, replay a failure exactly with no provider call, diff it and turn it into a regression test. Works with the framework you already use.">
+<meta property="og:title" content="Rewyn — Build. Run. Replay. Improve AI.">
+<meta property="og:description" content="A flight recorder for AI agents. Replay a production failure exactly, offline, with no provider call.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://rewyn.dev">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>&#9194;</text></svg>">
+<style>
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; font-family: system-ui, sans-serif; }
+  img { max-width: 100%; }
+  [hidden] { display: none !important; }
+</style>
+<title>Rewyn</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<style>
+  /* Dark-first, mirroring the console's own token set (web/app/globals.css). */
+  :root {
+    --bg: #0b0d10;
+    --bg-raised: #101317;
+    --bg-inset: #0d0f13;
+    --bg-hover: #171b21;
+    --border: #1f242c;
+    --border-strong: #2b323c;
+    --text: #e6e8eb;
+    --text-muted: #9aa4b2;
+    --text-faint: #8b94a1;
+    --accent: #7aa2f7;
+    --accent-bg: rgba(122, 162, 247, 0.14);
+    --accent-border: rgba(122, 162, 247, 0.45);
+    --replay: #6fd3e0;
+    --replay-bg: rgba(111, 211, 224, 0.14);
+    --good: #7ee0a8;
+    --warn: #e0c56f;
+
+    --sans: "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+
+    --measure: 66ch;
+    --shell: 1120px;
+  }
+
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --bg: #ffffff;
+      --bg-raised: #f7f8fa;
+      --bg-inset: #f1f3f6;
+      --bg-hover: #eef1f5;
+      --border: #e2e6ec;
+      --border-strong: #ccd3dd;
+      --text: #11161d;
+      --text-muted: #5a6473;
+      --text-faint: #5b6370;
+      --accent: #2f5fd0;
+      --accent-bg: rgba(47, 95, 208, 0.1);
+      --accent-border: rgba(47, 95, 208, 0.4);
+      --replay: #0b7285;
+      --replay-bg: rgba(11, 114, 133, 0.12);
+      --good: #12724a;
+      --warn: #8a6a00;
+    }
+  }
+
+  :root[data-theme="light"] {
+    --bg: #ffffff;
+    --bg-raised: #f7f8fa;
+    --bg-inset: #f1f3f6;
+    --bg-hover: #eef1f5;
+    --border: #e2e6ec;
+    --border-strong: #ccd3dd;
+    --text: #11161d;
+    --text-muted: #5a6473;
+    --text-faint: #5b6370;
+    --accent: #2f5fd0;
+    --accent-bg: rgba(47, 95, 208, 0.1);
+    --accent-border: rgba(47, 95, 208, 0.4);
+    --replay: #0b7285;
+    --replay-bg: rgba(11, 114, 133, 0.12);
+    --good: #12724a;
+    --warn: #8a6a00;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: var(--shell);
+    margin: 0 auto;
+    padding-inline: 20px;
+  }
+
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
+
+  h1, h2, h3 { text-wrap: balance; margin: 0; line-height: 1.2; letter-spacing: -0.02em; }
+  p { margin: 0; }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+  }
+
+  /* ---------- top bar ---------- */
+  .topbar {
+    position: sticky;
+    top: env(safe-area-inset-top, 0px);
+    z-index: 20;
+    background: color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--border);
+  }
+  .topbar .wrap {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    height: 58px;
+  }
+  .brand {
+    font-family: var(--mono);
+    font-weight: 600;
+    font-size: 15px;
+    letter-spacing: -0.01em;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 9px;
+  }
+  .brand:hover { text-decoration: none; }
+  .brand .glyph { color: var(--replay); font-size: 13px; }
+  .topnav { margin-left: auto; display: flex; align-items: center; gap: 22px; }
+  .topnav a { color: var(--text-muted); font-size: 14px; }
+  .topnav a:hover { color: var(--text); text-decoration: none; }
+  @media (max-width: 620px) { .topnav .opt { display: none; } }
+
+  /* ---------- hero ---------- */
+  .hero { padding-block: 72px 56px; }
+  .hero-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
+    gap: 52px;
+    align-items: start;
+  }
+  @media (max-width: 940px) {
+    .hero-grid { grid-template-columns: 1fr; gap: 40px; }
+    .hero { padding-block: 48px 40px; }
+  }
+
+  .wordmark {
+    font-size: clamp(44px, 7vw, 68px);
+    font-weight: 700;
+    letter-spacing: -0.045em;
+    margin-bottom: 14px;
+  }
+  .tagline {
+    font-family: var(--mono);
+    font-size: clamp(14px, 2.2vw, 17px);
+    font-weight: 500;
+    color: var(--replay);
+    letter-spacing: -0.01em;
+    margin-bottom: 26px;
+  }
+  .lede {
+    font-size: 17px;
+    color: var(--text-muted);
+    max-width: var(--measure);
+    margin-bottom: 14px;
+  }
+  .lede strong { color: var(--text); font-weight: 600; }
+
+  .cta-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+    margin-top: 28px;
+  }
+  .install {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    font-family: var(--mono);
+    font-size: 14px;
+    background: var(--bg-inset);
+    border: 1px solid var(--border-strong);
+    border-radius: 8px;
+    padding: 11px 14px;
+    color: var(--text);
+  }
+  .install .prompt { color: var(--text-faint); user-select: none; }
+  .copy-btn {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    background: transparent;
+    border: 1px solid var(--border-strong);
+    color: var(--text-muted);
+    border-radius: 5px;
+    padding: 4px 8px;
+    cursor: pointer;
+  }
+  .copy-btn:hover { background: var(--bg-hover); color: var(--text); }
+  .ghost {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 11px 15px;
+  }
+  .ghost:hover { color: var(--text); background: var(--bg-hover); text-decoration: none; }
+
+  .meta-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 20px;
+    margin-top: 26px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-faint);
+  }
+  .meta-strip span { display: inline-flex; align-items: center; gap: 7px; }
+  .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--replay); flex: none; }
+
+  /* ---------- run panel ---------- */
+  .panel {
+    background: var(--bg-raised);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .panel-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 11px 14px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-inset);
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-faint);
+  }
+  .panel-head .rid { color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pill {
+    margin-left: auto;
+    flex: none;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 3px 7px;
+    border-radius: 4px;
+    background: var(--replay-bg);
+    color: var(--replay);
+    border: 1px solid color-mix(in srgb, var(--replay) 40%, transparent);
+  }
+
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    border-bottom: 1px solid var(--border);
+  }
+  .stat { padding: 12px 14px; border-right: 1px solid var(--border); }
+  .stat:last-child { border-right: 0; }
+  .stat .k {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    display: block;
+  }
+  .stat .v {
+    font-family: var(--mono);
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+  }
+  @media (max-width: 520px) {
+    .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .stat:nth-child(2) { border-right: 0; }
+    .stat:nth-child(1), .stat:nth-child(2) { border-bottom: 1px solid var(--border); }
+  }
+
+  .events {
+    list-style: none;
+    margin: 0;
+    padding: 8px 0;
+    max-height: 340px;
+    overflow-y: auto;
+    font-family: var(--mono);
+    font-size: 12.5px;
+  }
+  .events li {
+    display: grid;
+    grid-template-columns: 26px 92px minmax(0, 1fr);
+    gap: 10px;
+    align-items: baseline;
+    padding: 3px 14px;
+    color: var(--text);
+    transition: opacity 140ms ease, background-color 140ms ease;
+  }
+  .events li .n { color: var(--text-faint); text-align: right; font-variant-numeric: tabular-nums; }
+  .events li .t { color: var(--text-faint); font-variant-numeric: tabular-nums; }
+  .events li .e { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .events li[data-future="true"] { opacity: 0.22; }
+  .events li[data-cursor="true"] { background: var(--accent-bg); }
+  .events li[data-cursor="true"] .e { color: var(--accent); }
+  .ev-model .e { color: var(--text); }
+  .ev-tool .e { color: var(--replay); }
+  .ev-bound .e { color: var(--text-muted); }
+
+  .scrub {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 14px;
+    border-top: 1px solid var(--border);
+    background: var(--bg-inset);
+  }
+  .scrub input[type="range"] {
+    flex: 1;
+    min-width: 0;
+    accent-color: var(--accent);
+    cursor: pointer;
+  }
+  .scrub .pos {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-faint);
+    font-variant-numeric: tabular-nums;
+    flex: none;
+  }
+  .replay-btn {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    background: var(--replay-bg);
+    color: var(--replay);
+    border: 1px solid color-mix(in srgb, var(--replay) 40%, transparent);
+    border-radius: 6px;
+    padding: 6px 10px;
+    cursor: pointer;
+  }
+  .replay-btn:hover { background: color-mix(in srgb, var(--replay) 22%, transparent); }
+
+  /* ---------- sections ---------- */
+  section { padding-block: 64px; border-top: 1px solid var(--border); }
+  .sec-head { max-width: var(--measure); margin-bottom: 36px; }
+  .sec-head h2 {
+    font-size: clamp(25px, 3.6vw, 33px);
+    font-weight: 600;
+    margin-block: 10px 12px;
+  }
+  .sec-head p { color: var(--text-muted); font-size: 16px; }
+
+  /* problem */
+  .problem-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  @media (max-width: 800px) { .problem-grid { grid-template-columns: 1fr; } }
+  .problem-cell { background: var(--bg); padding: 24px 22px; }
+  .problem-cell h3 { font-size: 16px; font-weight: 600; margin-bottom: 8px; }
+  .problem-cell p { font-size: 14.5px; color: var(--text-muted); }
+
+  /* pipeline — a real sequence, so it is numbered */
+  .step { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: start; }
+  .step + .step { margin-top: 56px; padding-top: 56px; border-top: 1px dashed var(--border); }
+  @media (max-width: 940px) { .step { grid-template-columns: 1fr; gap: 24px; } }
+  .step-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  .step-num {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--bg);
+    background: var(--accent);
+    border-radius: 4px;
+    padding: 2px 6px;
+  }
+  .step h3 { font-size: 21px; font-weight: 600; margin-bottom: 10px; }
+  .step p { color: var(--text-muted); font-size: 15.5px; max-width: 52ch; }
+  .step p + p { margin-top: 12px; }
+
+  pre {
+    margin: 0;
+    background: var(--bg-inset);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 15px 16px;
+    overflow-x: auto;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    line-height: 1.7;
+    color: var(--text);
+  }
+  pre + pre { margin-top: 12px; }
+  .c-com { color: var(--text-faint); }
+  .c-kw { color: var(--accent); }
+  .c-str { color: var(--replay); }
+  .c-fn { color: var(--text); font-weight: 500; }
+  .c-ok { color: var(--good); font-weight: 500; }
+  .out-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    display: block;
+    margin-bottom: 7px;
+  }
+
+  /* feature grid */
+  .feat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(248px, 1fr));
+    gap: 22px 32px;
+  }
+  .feat h3 {
+    font-size: 15.5px;
+    font-weight: 600;
+    margin-bottom: 7px;
+    display: flex;
+    align-items: baseline;
+    gap: 9px;
+  }
+  .feat h3::before {
+    content: "";
+    width: 6px; height: 6px;
+    border-radius: 2px;
+    background: var(--accent);
+    flex: none;
+    transform: translateY(-1px);
+  }
+  .feat p { font-size: 14.5px; color: var(--text-muted); }
+  .feat code {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    color: var(--text);
+    background: var(--bg-inset);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1px 5px;
+  }
+
+  /* install */
+  .install-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: start; }
+  @media (max-width: 860px) { .install-grid { grid-template-columns: 1fr; gap: 28px; } }
+  .extras { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 12.5px; }
+  .extras td { padding: 7px 0; border-bottom: 1px solid var(--border); vertical-align: top; }
+  .extras td:first-child { color: var(--text); white-space: nowrap; padding-right: 18px; }
+  .extras td:last-child { color: var(--text-faint); font-family: var(--sans); font-size: 13.5px; }
+  .extras tr:last-child td { border-bottom: 0; }
+
+  /* footer */
+  footer { border-top: 1px solid var(--border); padding-block: 36px 52px; }
+  .foot-row { display: flex; flex-wrap: wrap; gap: 16px 28px; align-items: center; }
+  .foot-row .brand { font-size: 14px; }
+  .foot-links { margin-left: auto; display: flex; flex-wrap: wrap; gap: 20px; }
+  .foot-links a { color: var(--text-muted); font-size: 14px; }
+  .foot-note {
+    margin-top: 18px;
+    font-size: 13px;
+    color: var(--text-faint);
+    max-width: var(--measure);
+  }
+  @media (max-width: 620px) { .foot-links { margin-left: 0; } }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+  }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="wrap">
+    <a class="brand" href="#top"><span class="glyph">&#9664;&#9664;</span> rewyn</a>
+    <nav class="topnav">
+      <a class="opt" href="#how">How it works</a>
+      <a class="opt" href="#console">Console</a>
+      <a href="#install">Install</a>
+      <a href="https://github.com/rewyn-dev/rewyn">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<main id="top">
+
+  <div class="wrap hero">
+    <div class="hero-grid">
+      <div>
+        <h1 class="wordmark">Rewyn</h1>
+        <p class="tagline">Build. Run. Replay. Improve AI.</p>
+        <p class="lede">
+          Agents fail in ways tests do not catch. They worked yesterday, they answer
+          differently today, and <strong>the run that proves it is gone</strong>.
+        </p>
+        <p class="lede">
+          Rewyn is a <strong>flight recorder for AI agents</strong>. Every run is recorded
+          locally, so a failure you cannot reproduce can be replayed exactly &mdash; offline,
+          with no provider call &mdash; then diffed against a working run and turned into a
+          regression test.
+        </p>
+        <p class="lede">
+          Keep the framework you already use. It does not need to know Rewyn exists.
+        </p>
+
+        <div class="cta-row">
+          <span class="install">
+            <span class="prompt">$</span>
+            <span id="install-cmd">pip install rewyn</span>
+            <button class="copy-btn" id="copy" type="button" aria-label="Copy install command">Copy</button>
+          </span>
+          <a class="ghost" href="https://github.com/rewyn-dev/rewyn">View source &#8599;</a>
+        </div>
+
+        <div class="meta-strip">
+          <span><i class="dot"></i> Apache&#8209;2.0</span>
+          <span><i class="dot"></i> Python 3.11&#8211;3.14</span>
+          <span><i class="dot"></i> Works with your framework</span>
+          <span><i class="dot"></i> No account, no API key</span>
+        </div>
+      </div>
+
+      <div class="panel" aria-label="A recorded run">
+        <div class="panel-head">
+          <span>run</span>
+          <span class="rid">run_01M2SG0RJYWGRPGA77KAEM6D40</span>
+          <span class="pill">succeeded</span>
+        </div>
+        <div class="stats">
+          <div class="stat"><span class="k">Events</span><span class="v">17</span></div>
+          <div class="stat"><span class="k">Model calls</span><span class="v">3</span></div>
+          <div class="stat"><span class="k">Tool calls</span><span class="v">2</span></div>
+          <div class="stat"><span class="k">Cost</span><span class="v">$0.000085</span></div>
+        </div>
+        <ol class="events" id="events"></ol>
+        <div class="scrub">
+          <button class="replay-btn" id="replay" type="button"><span>&#9664;&#9664;</span> Replay</button>
+          <input type="range" id="scrubber" min="0" max="17" value="17" step="1" aria-label="Scrub through the recorded run">
+          <span class="pos" id="pos">17/17</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <section id="why">
+      <div class="sec-head">
+        <span class="eyebrow">The problem</span>
+        <h2>A passing test suite says nothing about what your agent did in production.</h2>
+        <p>
+          The failure modes that matter are the ones a unit test cannot express, because they
+          depend on a model, a prompt, a retrieved document and a tool result that all existed
+          at one moment and were never written down.
+        </p>
+      </div>
+      <div class="problem-grid">
+        <div class="problem-cell">
+          <h3>It changed and nobody knows why</h3>
+          <p>
+            A provider ships a new checkpoint, a prompt gets edited, a retrieved document
+            changes upstream. The behaviour moves and your diff is empty.
+          </p>
+        </div>
+        <div class="problem-cell">
+          <h3>You cannot reproduce it</h3>
+          <p>
+            The bug report is a screenshot. The run is gone, the context that produced it is
+            gone, and running it again gives you a different answer.
+          </p>
+        </div>
+        <div class="problem-cell">
+          <h3>Fixing one thing breaks another</h3>
+          <p>
+            You improve the prompt for one case and silently regress nine others, with no
+            suite that would have caught it.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section id="how">
+      <div class="sec-head">
+        <span class="eyebrow">How it works</span>
+        <h2>Four things you do with a run</h2>
+        <p>
+          Recording is not a mode you switch on for debugging &mdash; it is how a run executes,
+          whether the agent is yours or someone else&rsquo;s. Everything below reads the
+          <code style="font-family:var(--mono);font-size:13px">.rewyn/</code> directory your
+          normal runs already wrote.
+        </p>
+      </div>
+
+      <div class="step">
+        <div>
+          <div class="step-label"><span class="step-num">01</span><span class="eyebrow">Record</span></div>
+          <h3>Start where you are.</h3>
+          <p>
+            <strong style="color:var(--text)">You already have an agent.</strong> Keep it.
+            <code style="font-family:var(--mono);font-size:13px">instrument</code> wraps any
+            callable so each invocation becomes a recorded run. Your framework does not need
+            to know Rewyn exists, and Rewyn does not import it.
+          </p>
+          <p>
+            That records the boundary &mdash; input, output, duration, failure, and the version
+            of what ran. Rewyn sees the edges of a foreign agent, not its internals, and does
+            not pretend otherwise.
+          </p>
+          <p>
+            <strong style="color:var(--text)">You are building one.</strong> Then every
+            primitive is recorded and the detail is complete: swap the model string for
+            <code style="font-family:var(--mono);font-size:13px">"openai:gpt-5"</code> and
+            nothing else changes.
+          </p>
+        </div>
+        <div>
+          <span class="out-label">Keep your stack</span>
+          <pre><span class="c-kw">from</span> rewyn.integrations.frameworks <span class="c-kw">import</span> instrument
+
+<span class="c-com"># A LangChain, LlamaIndex, CrewAI or plain-SDK agent.</span>
+agent = instrument(langgraph_app.invoke,
+                   framework=<span class="c-str">"langgraph"</span>, version=<span class="c-str">"3"</span>)
+
+answer = agent(question)   <span class="c-com"># now a recorded run</span></pre>
+          <span class="out-label" style="margin-top:20px">Or build it in Rewyn</span>
+          <pre><span class="c-kw">from</span> rewyn <span class="c-kw">import</span> Agent, tool
+
+<span class="c-kw">@tool</span>(risk_level=<span class="c-str">"low"</span>)
+<span class="c-kw">def</span> <span class="c-fn">ev_market_share</span>(region: str) -> dict[str, float]:
+    <span class="c-str">"""EV share of new car sales, by region."""</span>
+    <span class="c-kw">return</span> {<span class="c-str">"region"</span>: {<span class="c-str">"europe"</span>: 24.5}.get(region.lower(), 0.0)}
+
+agent = Agent(model=<span class="c-str">"anthropic:claude-opus-5"</span>,
+              tools=[ev_market_share])
+result = agent.run(<span class="c-str">"Compare EV adoption in Europe and China"</span>)</pre>
+        </div>
+      </div>
+
+      <div class="step">
+        <div>
+          <div class="step-label"><span class="step-num">02</span><span class="eyebrow">Inspect</span></div>
+          <h3>Read back exactly what happened.</h3>
+          <p>
+            Every event in order, with its timing, its payload and the version of every
+            dependency the run touched &mdash; which agent, which model, which tool, at which
+            version. Cost is attributed per call, not just totalled.
+          </p>
+        </div>
+        <div>
+          <span class="out-label">$ rewyn inspect run_01M2SG0R&hellip;</span>
+          <pre>run       run_01M2SG0RJYWGRPGA77KAEM6D40
+name      ev-researcher
+status    <span class="c-ok">succeeded</span>
+usage     27 in / 29 out tokens, 3 model calls, 2 tool calls
+cost      0.000085 USD
+
+dependencies
+  - agent: ev-researcher (v1)
+  - model: anthropic:claude-opus-5
+  - tool:  ev_market_share (v1)
+
+events
+   1 RUN_STARTED            input: Compare EV adoption&hellip;
+   2 AGENT_LOOP_STARTED     strategy: react
+   3 MODEL_CALLED           <span class="c-com">&#8230;</span>
+   5 TOOL_CALLED            ev_market_share(region=<span class="c-str">"europe"</span>)
+   6 TOOL_RETURNED          {<span class="c-str">"region"</span>: 24.5}</pre>
+        </div>
+      </div>
+
+      <div class="step">
+        <div>
+          <div class="step-label"><span class="step-num">03</span><span class="eyebrow">Replay</span></div>
+          <h3>Run it again without calling the provider.</h3>
+          <p>
+            Replay reconstructs the run from its recording: the recorded responses are served
+            back in order, so you can step through a production failure on a plane, with no
+            key and no spend.
+          </p>
+          <p>
+            It tells you whether the reconstruction was faithful, rather than quietly
+            diverging &mdash; and diffing a replay against a live run is how you see what a
+            provider changed underneath you.
+          </p>
+        </div>
+        <div>
+          <span class="out-label">$ rewyn replay run_01M2SG0R&hellip;</span>
+          <pre>replay    run_01M2SFSB5BAMW6HZPMCWJJ6XH4
+of        run_01M2SG0RJYWGRPGA77KAEM6D40
+mode      reconstruct
+model     recorded   tools recorded
+identical <span class="c-ok">True</span>   faithful <span class="c-ok">True</span>
+swapped   5 recorded response(s)</pre>
+        </div>
+      </div>
+
+      <div class="step">
+        <div>
+          <div class="step-label"><span class="step-num">04</span><span class="eyebrow">Improve</span></div>
+          <h3>Turn the production run into a regression test.</h3>
+          <p>
+            The run that broke becomes a case in a dataset. Change the prompt, the model or
+            the tool, re-run the set, and get a report of what moved &mdash; with the old
+            behaviour on record to compare against.
+          </p>
+          <p>
+            This is the loop the whole SDK exists for: the incident you fixed last month
+            cannot come back without a test failing.
+          </p>
+        </div>
+        <div>
+          <pre><span class="c-kw">from</span> rewyn.evaluation.dataset <span class="c-kw">import</span> Dataset
+<span class="c-kw">from</span> rewyn.evaluation.metrics <span class="c-kw">import</span> exact_match
+<span class="c-kw">from</span> rewyn.evaluation.regression <span class="c-kw">import</span> run_regression
+
+<span class="c-com"># A production run becomes a regression case.</span>
+dataset = Dataset(name=<span class="c-str">"critical"</span>)
+dataset.add_run(result.run_id)
+
+report = run_regression(dataset, agent,
+                        evaluators=[exact_match()])
+<span class="c-fn">print</span>(report.render())</pre>
+        </div>
+      </div>
+    </section>
+
+    <section id="console">
+      <div class="sec-head">
+        <span class="eyebrow">The console</span>
+        <h2>An execution debugger for your own runs</h2>
+        <p>
+          <code style="font-family:var(--mono);font-size:13px">rewyn ui</code> opens a local console
+          on the <code style="font-family:var(--mono);font-size:13px">.rewyn/</code> you already have.
+          No account, no upload, no network.
+        </p>
+      </div>
+      <div class="feat-grid">
+        <div class="feat">
+          <h3>Timeline</h3>
+          <p>Everything the agent did, in order, with timing and payloads &mdash; the run expanded rather than summarised.</p>
+        </div>
+        <div class="feat">
+          <h3>Execution graph</h3>
+          <p>The shape of the run: loops, branches, subagents and handoffs as a graph you can walk.</p>
+        </div>
+        <div class="feat">
+          <h3>Context inspector</h3>
+          <p>Which item entered the prompt, from where, at which version, and how much of the budget it spent.</p>
+        </div>
+        <div class="feat">
+          <h3>Compare</h3>
+          <p>Two runs side by side, down to the event &mdash; what changed, and at which step it diverged.</p>
+        </div>
+        <div class="feat">
+          <h3>Drift</h3>
+          <p>Behaviour moving over time against a recorded manifest, so a provider change surfaces as a signal.</p>
+        </div>
+        <div class="feat">
+          <h3>Same screens, hosted</h3>
+          <p>The optional cloud serves the identical console over a team&rsquo;s runs. The SDK is complete without it.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="principles">
+      <div class="sec-head">
+        <span class="eyebrow">Design rules</span>
+        <h2>What the SDK guarantees</h2>
+      </div>
+      <div class="feat-grid">
+        <div class="feat">
+          <h3>Everything is an event</h3>
+          <p>Model calls, retrieval, memory, tools, MCP, skills, loops, handoffs, checkpoints, approvals and guardrails all emit structured events. That is what makes replay and diff possible at all.</p>
+        </div>
+        <div class="feat">
+          <h3>Provider agnostic</h3>
+          <p>No module outside the provider adapter imports a provider SDK or assumes its message format. Provider-specific features are an explicit <code>provider_options={}</code> escape hatch, never hidden.</p>
+        </div>
+        <div class="feat">
+          <h3>Local first</h3>
+          <p><code>pip install rewyn</code> is fully usable with no account, no cloud and no Rewyn key. State lives in <code>.rewyn/</code> and stays on your machine.</p>
+        </div>
+        <div class="feat">
+          <h3>Never breaks the host app</h3>
+          <p>Telemetry is async, batched, buffered and fails open. If the recording layer throws, your agent keeps running.</p>
+        </div>
+        <div class="feat">
+          <h3>Secrets never persist</h3>
+          <p>Keys, tokens and private keys are redacted before anything is written or uploaded. Untrusted context cannot override trusted policy.</p>
+        </div>
+        <div class="feat">
+          <h3>Versioned for provenance</h3>
+          <p>Prompts, skills, tools, agents, graphs, context and datasets are versioned, so a historical run can be reconstructed exactly &mdash; not approximately.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="install">
+      <div class="sec-head">
+        <span class="eyebrow">Install</span>
+        <h2>Core is provider agnostic. Add only what you use.</h2>
+      </div>
+      <div class="install-grid">
+        <div>
+          <pre>$ pip install rewyn
+
+<span class="c-com"># see it work, offline, in a minute</span>
+$ rewyn quickstart
+$ rewyn runs
+$ rewyn inspect &lt;run-id&gt;
+$ rewyn replay  &lt;run-id&gt;</pre>
+          <p class="foot-note" style="margin-top:18px">
+            The CLI also carries <code style="font-family:var(--mono);font-size:12.5px">diff</code>,
+            <code style="font-family:var(--mono);font-size:12.5px">eval</code>,
+            <code style="font-family:var(--mono);font-size:12.5px">test</code>,
+            <code style="font-family:var(--mono);font-size:12.5px">datasets</code>,
+            <code style="font-family:var(--mono);font-size:12.5px">manifest</code>,
+            <code style="font-family:var(--mono);font-size:12.5px">drift</code>,
+            <code style="font-family:var(--mono);font-size:12.5px">export</code> and
+            <code style="font-family:var(--mono);font-size:12.5px">doctor</code>.
+          </p>
+        </div>
+        <div>
+          <table class="extras">
+            <tbody>
+              <tr><td>rewyn[anthropic]</td><td>Anthropic adapter</td></tr>
+              <tr><td>rewyn[openai]</td><td>OpenAI adapter</td></tr>
+              <tr><td>rewyn[google]</td><td>Google Gemini adapter</td></tr>
+              <tr><td>rewyn[mcp]</td><td>Model Context Protocol client and server</td></tr>
+              <tr><td>rewyn[ui]</td><td>The local console</td></tr>
+              <tr><td>rewyn[redis]</td><td>Shared memory and checkpoints</td></tr>
+              <tr><td>rewyn[s3]</td><td>S3-compatible object storage</td></tr>
+              <tr><td>rewyn[search]</td><td>Elasticsearch / OpenSearch retrieval</td></tr>
+              <tr><td>rewyn[all]</td><td>Everything</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="foot-row">
+      <span class="brand"><span class="glyph">&#9664;&#9664;</span> rewyn</span>
+      <div class="foot-links">
+        <a href="https://github.com/rewyn-dev/rewyn">GitHub</a>
+        <a href="https://pypi.org/project/rewyn/">PyPI</a>
+        <a href="/docs/">Docs</a>
+        <a href="https://github.com/rewyn-dev/rewyn/blob/main/CHANGELOG.md">Changelog</a>
+      </div>
+    </div>
+    <p class="foot-note">
+      Rewyn is 0.1 and early. The API has not yet met enough users to promise backwards
+      compatibility, so it goes out as 0.x until it has. Apache&#8209;2.0.
+      Issues and pull requests welcome.
+    </p>
+  </div>
+</footer>
+
+<script>
+  (function () {
+    var EVENTS = [
+      ["05:32:21.982", "RUN_STARTED", "bound"],
+      ["05:32:21.983", "AGENT_LOOP_STARTED", "bound"],
+      ["05:32:21.983", "MODEL_CALLED", "model"],
+      ["05:32:21.983", "MODEL_RESPONSE", "model"],
+      ["05:32:21.984", "TOOL_CALLED", "tool"],
+      ["05:32:21.984", "TOOL_RETURNED", "tool"],
+      ["05:32:21.984", "AGENT_LOOP_ITERATION", "bound"],
+      ["05:32:21.984", "MODEL_CALLED", "model"],
+      ["05:32:21.985", "MODEL_RESPONSE", "model"],
+      ["05:32:21.985", "TOOL_CALLED", "tool"],
+      ["05:32:21.985", "TOOL_RETURNED", "tool"],
+      ["05:32:21.985", "AGENT_LOOP_ITERATION", "bound"],
+      ["05:32:21.985", "MODEL_CALLED", "model"],
+      ["05:32:21.985", "MODEL_RESPONSE", "model"],
+      ["05:32:21.985", "AGENT_LOOP_ITERATION", "bound"],
+      ["05:32:21.985", "AGENT_LOOP_FINISHED", "bound"],
+      ["05:32:21.985", "RUN_FINISHED", "bound"]
+    ];
+
+    var list = document.getElementById("events");
+    var scrubber = document.getElementById("scrubber");
+    var pos = document.getElementById("pos");
+    var replayBtn = document.getElementById("replay");
+    if (!list || !scrubber) { return; }
+
+    EVENTS.forEach(function (ev, i) {
+      var li = document.createElement("li");
+      li.className = "ev-" + ev[2];
+      var n = document.createElement("span");
+      n.className = "n";
+      n.textContent = String(i + 1);
+      var t = document.createElement("span");
+      t.className = "t";
+      t.textContent = ev[0];
+      var e = document.createElement("span");
+      e.className = "e";
+      e.textContent = ev[1];
+      li.appendChild(n); li.appendChild(t); li.appendChild(e);
+      list.appendChild(li);
+    });
+
+    var rows = Array.prototype.slice.call(list.children);
+
+    function render(n) {
+      rows.forEach(function (li, i) {
+        li.dataset.future = i >= n ? "true" : "false";
+        li.dataset.cursor = i === n - 1 ? "true" : "false";
+      });
+      pos.textContent = n + "/" + EVENTS.length;
+    }
+
+    render(EVENTS.length);
+
+    scrubber.addEventListener("input", function () {
+      stop();
+      render(parseInt(scrubber.value, 10));
+    });
+
+    var timer = null;
+    function stop() {
+      if (timer) { clearInterval(timer); timer = null; }
+    }
+
+    replayBtn.addEventListener("click", function () {
+      stop();
+      var n = 0;
+      render(0);
+      scrubber.value = "0";
+      var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      if (reduce) {
+        render(EVENTS.length);
+        scrubber.value = String(EVENTS.length);
+        return;
+      }
+      timer = setInterval(function () {
+        n += 1;
+        render(n);
+        scrubber.value = String(n);
+        if (n >= EVENTS.length) { stop(); }
+      }, 110);
+    });
+
+    var copy = document.getElementById("copy");
+    if (copy && navigator.clipboard) {
+      copy.addEventListener("click", function () {
+        navigator.clipboard.writeText("pip install rewyn").then(function () {
+          copy.textContent = "Copied";
+          setTimeout(function () { copy.textContent = "Copy"; }, 1600);
+        }, function () {});
+      });
+    }
+  })();
+</script>
+
+</body>
+</html>

@@ -28,3 +28,7 @@ htmlcov/
 # across platforms (Next uses a per-platform SWC binary), so it is built on
 # Linux during release and shipped in the wheel rather than committed.
 src/rewyn/ui/static/
+
+# Site build
+_site/
+site/
