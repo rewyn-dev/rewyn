@@ -31,7 +31,7 @@ from rewyn.integrations.frameworks import instrument
 # A LangChain, LlamaIndex, CrewAI or plain-SDK agent you already run.
 agent = instrument(langgraph_app.invoke, framework="langgraph", version="3")
 
-answer = agent(question)   # now a recorded Rewyn run
+answer = agent(question)  # now a recorded Rewyn run
 ```
 
 That records the boundary — input, output, duration, failure, and the version
@@ -45,10 +45,12 @@ complete:
 ```python
 from rewyn import Agent, tool
 
+
 @tool(risk_level="low")
 def ev_market_share(region: str) -> dict[str, float]:
     """EV share of new car sales, by region."""
     return {"region": {"europe": 24.5, "china": 41.0}.get(region.lower(), 0.0)}
+
 
 agent = Agent(model="anthropic:claude-opus-5", tools=[ev_market_share])
 result = agent.run("Compare EV adoption in Europe and China")
