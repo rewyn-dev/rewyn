@@ -12,10 +12,12 @@ from __future__ import annotations
 
 import asyncio
 import concurrent.futures
+import contextlib
 import contextvars
 import queue
 import threading
-from collections.abc import AsyncIterator, Coroutine, Iterator
+import weakref
+from collections.abc import AsyncIterator, Callable, Coroutine, Iterator, MutableMapping
 from typing import Any, TypeVar
 
 T = TypeVar("T")
@@ -122,3 +124,55 @@ class BackgroundLoop:
         self._thread.join(timeout=5.0)
         if not self.loop.is_running():
             self.loop.close()
+
+
+class LoopBoundCache:
+    """Cache one resource per event loop.
+
+    An async client binds its connection pool to the loop that was running
+    when it was built. :func:`run_sync` opens a loop per call and closes it
+    again, so a client cached on the adapter outlives its loop and the second
+    synchronous call fails with ``RuntimeError: Event loop is closed``. That
+    is the whole bug: ``agent.run(...)`` twice against a real provider.
+
+    Keying the cache by the running loop gives each loop its own client, and
+    a closed loop takes its entry with it -- the mapping holds the loop
+    weakly, so nothing accumulates across calls.
+    """
+
+    __slots__ = ("_detached", "_factory", "_per_loop")
+
+    def __init__(self, factory: Callable[[], Any]) -> None:
+        self._factory = factory
+        self._per_loop: MutableMapping[Any, Any] = weakref.WeakKeyDictionary()
+        self._detached: Any = None
+
+    def get(self) -> Any:
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            # Built outside a loop. Nothing is bound yet, so one instance is
+            # enough until a loop actually runs.
+            if self._detached is None:
+                self._detached = self._factory()
+            return self._detached
+        client = self._per_loop.get(loop)
+        if client is None:
+            # A client made before any loop was running is safe to adopt.
+            client, self._detached = self._detached or self._factory(), None
+            self._per_loop[loop] = client
+        return client
+
+    def pop(self) -> Any:
+        """Remove and return this loop's client, so a caller can close it."""
+        self._detached = None
+        try:
+            return self._per_loop.pop(asyncio.get_running_loop(), None)
+        except RuntimeError:
+            return None
+
+    def set(self, client: Any) -> None:
+        """Pin an explicitly supplied client, which is never rebuilt."""
+        self._detached = client
+        with contextlib.suppress(RuntimeError):
+            self._per_loop[asyncio.get_running_loop()] = client

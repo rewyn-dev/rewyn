@@ -12,6 +12,7 @@ import os
 from collections.abc import AsyncIterator
 from typing import Any, ClassVar
 
+from rewyn.core.sync import LoopBoundCache
 from rewyn.core.types import JSONObject, MissingDependencyError
 from rewyn.models.base import (
     FinishReason,
@@ -55,7 +56,9 @@ class OpenAIModel(Model):
         **defaults: Any,
     ) -> None:
         super().__init__(name, defaults=defaults)
-        self._client = client
+        self._clients = LoopBoundCache(self._new_client)
+        if client is not None:
+            self._clients.set(client)
         self._client_kwargs: dict[str, Any] = {}
         if api_key is not None:
             self._client_kwargs["api_key"] = api_key
@@ -71,13 +74,14 @@ class OpenAIModel(Model):
 
     @property
     def client(self) -> Any:
-        if self._client is None:
-            try:
-                from openai import AsyncOpenAI
-            except ImportError as exc:  # pragma: no cover - exercised via MissingDependencyError
-                raise MissingDependencyError("openai", "openai") from exc
-            self._client = AsyncOpenAI(**self._client_kwargs)
-        return self._client
+        return self._clients.get()
+
+    def _new_client(self) -> Any:
+        try:
+            from openai import AsyncOpenAI
+        except ImportError as exc:  # pragma: no cover - exercised via MissingDependencyError
+            raise MissingDependencyError("openai", "openai") from exc
+        return AsyncOpenAI(**self._client_kwargs)
 
     # Request translation -----------------------------------------------------
     def _build_kwargs(self, request: ModelRequest) -> dict[str, Any]:
