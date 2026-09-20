@@ -31,7 +31,7 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field
 
 from rewyn.core.settings import get_settings
-from rewyn.core.sync import run_sync
+from rewyn.core.sync import LoopBoundCache, run_sync
 from rewyn.core.types import JSONObject, MissingDependencyError, RewynError
 
 API_VERSION = "v1"
@@ -235,7 +235,9 @@ class RemoteStore:
         self.backoff = backoff
         self.home = home
         self.queue = SyncQueue(home)
-        self._client = client
+        self._clients = LoopBoundCache(self._new_client)
+        if client is not None:
+            self._clients.set(client)
         self._owned = client is None
 
     def __repr__(self) -> str:
@@ -249,16 +251,19 @@ class RemoteStore:
             raise MissingDependencyError("httpx", "remote") from exc
         return httpx
 
+    def _new_client(self) -> Any:
+        httpx = self._require_httpx()
+        return httpx.AsyncClient(timeout=self.timeout)
+
     def _ensure_client(self) -> Any:
-        if self._client is None:
-            httpx = self._require_httpx()
-            self._client = httpx.AsyncClient(timeout=self.timeout)
-        return self._client
+        return self._clients.get()
 
     async def aclose(self) -> None:
-        if self._client is not None and self._owned:
-            await self._client.aclose()
-            self._client = None
+        if not self._owned:
+            return
+        client = self._clients.pop()
+        if client is not None:
+            await client.aclose()
 
     async def __aenter__(self) -> RemoteStore:
         return self
