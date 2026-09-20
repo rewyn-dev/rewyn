@@ -1,6 +1,6 @@
 [project]
 name = "rewyn"
-version = "0.1.1"
+version = "0.1.2"
 description = "Universal AI engineering SDK: build, run, record, replay, evaluate and regression-test AI agents."
 readme = "README.md"
 license = "Apache-2.0"
