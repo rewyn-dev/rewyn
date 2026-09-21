@@ -4,6 +4,58 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 semantic versioning.
 
+## [0.1.2] - 2026-09-20
+
+`agent.run()` worked once. The second call raised `RuntimeError: Event loop is
+closed`, so the most ordinary thing anyone writes with this SDK — a question,
+then the next question — failed on its second iteration. The suite did not
+notice, because every adapter test injects a fake client and every example
+calls `run()` exactly once.
+
+### Fixed
+
+- A provider client no longer outlives the event loop that built it.
+  `run_sync` opens a loop per call with `asyncio.run` and closes it again,
+  while the adapters memoised one `AsyncOpenAI` / `AsyncAnthropic` /
+  `genai.Client` for the lifetime of the model. That client's connection pool
+  belongs to the loop that created it, so the second synchronous call reached
+  for a pool on a closed loop:
+
+  ```python
+  agent = Agent(model=models.OpenAI("gpt-5"), tools=[...])
+  for question in questions:
+      agent.run(question)  # RuntimeError on the second iteration
+  ```
+
+  `LoopBoundCache` keys the client by the running loop and holds that loop
+  weakly, so each loop builds its own and a closed one takes its entry with
+  it. A client passed in by the caller is pinned and never rebuilt, which is
+  what the adapter tests rely on.
+- The same defect in `RemoteStore`, which drives httpx through `run_sync` in
+  six places: `rewyn sync` twice in a row failed the same way, and a push that
+  buffered locally and retried would fail on the retry rather than the
+  attempt. Closing still works, so the cache hands the live client back rather
+  than dropping it.
+- `run_sync` itself is deliberately unchanged. Reusing one persistent loop
+  would fix every case at once, but it moves every synchronous call onto a
+  background thread's loop and changes context variable propagation and async
+  generator shutdown across the API the documentation leads with. The defect
+  is a resource outliving its loop, so that is what is fixed.
+
+### Changed
+
+- The README leads with `instrument()` instead of `Agent`. It asked a reader
+  to rewrite a working agent before they got anything back, which is the
+  largest thing standing between the SDK and its first users, and it was never
+  true: `instrument` wraps any callable so a LangChain, LlamaIndex, CrewAI or
+  plain-SDK agent becomes a recorded run without the framework knowing Rewyn
+  exists. What it records is stated rather than implied — the boundary, not
+  the internals, because it cannot see inside a foreign agent.
+- rewyn.dev serves a landing page at the root, with the documentation under
+  `/docs/`. The site opened on a table of contents, which tells someone
+  arriving from a link nothing about what the project is. One Pages
+  deployment still, one domain, one workflow.
+
 ## [0.1.1] - 2026-09-18
 
 The first release shipped a console that fails WCAG AA in both palettes, and
